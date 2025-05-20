@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     PER_TICKER_NEWS_SCRAPE_LIMIT: int = 10
     
     GENERAL_NEWS_SCRAPE_INTERVAL: timedelta = Field(
-        default=timedelta(hours=1),
+        default=timedelta(minutes=30),
         description="Interval between scraping general news"   
     )
     GENERAL_NEWS_SCRAPE_LIMIT: int = 10

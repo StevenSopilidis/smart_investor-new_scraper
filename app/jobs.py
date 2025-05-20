@@ -93,7 +93,7 @@ async def scrape_general_api():
                 logger.exception("Unexpected error on page %d", pages_visited)
                 break
         
-        # update general news state
+        # update general news statep
         new_state = GeneralNewsState(
             last_general_news_ts=last_general_news_ts,
             next_general_news_url=next_general_news_url

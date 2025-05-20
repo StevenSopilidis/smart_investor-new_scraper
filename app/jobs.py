@@ -3,18 +3,23 @@ from apscheduler.triggers.interval import IntervalTrigger
 from contextlib import asynccontextmanager
 from app.config import settings
 from fastapi import FastAPI
+from app.repo.state_repo import RedisStateRepo
+from app.models.general_news_state import GeneralNewsState
 import httpx
 import logging
 
 logger = logging.getLogger("uvicorn.error")
-
-
-# TODO use persistant way to store it
-last_general_news_ts = "1970-01-01T00:00:00Z"
-next_general_news_url = None
+repo = RedisStateRepo()
 
 async def scrape_general_api():
-    global last_general_news_ts, next_general_news_url
+    connected = await repo.is_connected()
+    if not connected:
+        logger.error("Could not connect to redis repo")
+        return
+    
+    state = await repo.load_general_news_state()
+    last_general_news_ts = state.last_general_news_ts
+    next_general_news_url = state.next_general_news_url
     
     max_ts = last_general_news_ts
     
@@ -37,6 +42,7 @@ async def scrape_general_api():
             try:
                 pages_visited += 1
                 
+                # get data
                 resp = await client.get(url)
                 resp.raise_for_status()
                 data = resp.json()
@@ -49,7 +55,7 @@ async def scrape_general_api():
                     
                     if not max_ts or pub > max_ts:
                         max_ts = pub
-
+                        
                     # TODO process data
 
                 # prepare next page
@@ -86,7 +92,13 @@ async def scrape_general_api():
             except Exception as e:
                 logger.exception("Unexpected error on page %d", pages_visited)
                 break
-            
+        
+        # update general news state
+        new_state = GeneralNewsState(
+            last_general_news_ts=last_general_news_ts,
+            next_general_news_url=next_general_news_url
+        )
+        await repo.set_general_news_state(new_state)
     
 
 async def scrape_per_ticker_api():

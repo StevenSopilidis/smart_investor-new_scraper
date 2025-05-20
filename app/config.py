@@ -27,7 +27,9 @@ class Settings(BaseSettings):
         default=timedelta(seconds=10),
         description="Interval between scraping general news"   
     )
-    GENERAL_NEWS_MAX_PAGES_TO_VISIT : int = 30
+    GENERAL_NEWS_MAX_PAGES_TO_VISIT : int = 2
     GENERAL_NEWS_SCRAPE_LIMIT: int = 10
+    
+    REDIS_URL: str = "redis://localhost:6379/0"
     
 settings = Settings()

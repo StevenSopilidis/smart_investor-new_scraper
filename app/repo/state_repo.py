@@ -44,11 +44,11 @@ class RedisStateRepo:
         pipe = self._redis.pipeline()
         
         pipe.set(f"{state.symbol}:last_ts", state.last_symbol_news_ts)
-        if state.next_general_news_url:
+        if state.next_symbol_news_url:
             pipe.set(f"{state.symbol}:next_url", state.next_symbol_news_url)
         else:
             pipe.delete(f"{state.symbol}:next_url")
-        await pipe.execute()            
+        await pipe.execute()
         
         
     async def load_general_news_state(self) -> GeneralNewsState:

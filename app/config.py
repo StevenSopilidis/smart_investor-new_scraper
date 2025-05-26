@@ -18,13 +18,13 @@ class Settings(BaseSettings):
     API_KEY: str
     
     PER_TICKER_SCRAPE_INTERVAL: timedelta = Field(
-        default=timedelta(minutes=10),
+        default=timedelta(seconds=10),
         description="Interval between scraping news per symbol"
     )
     PER_TICKER_NEWS_SCRAPE_LIMIT: int = 10
     
     GENERAL_NEWS_SCRAPE_INTERVAL: timedelta = Field(
-        default=timedelta(seconds=10),
+        default=timedelta(minutes=10),
         description="Interval between scraping general news"   
     )
     GENERAL_NEWS_MAX_PAGES_TO_VISIT : int = 2

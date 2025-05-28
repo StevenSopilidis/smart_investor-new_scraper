@@ -2,6 +2,7 @@ from typing import Optional
 from app.config import settings
 from app.scrapers.news_scraper import NewsScraper
 from app.models.general_news_state import GeneralNewsState
+from app.models.polygon_api_data import extract_data
 
 class GeneralNewsScraper(NewsScraper):
     async def _load_state(self, symbol: Optional[str]):
@@ -39,5 +40,4 @@ class GeneralNewsScraper(NewsScraper):
         item: dict, 
         symbol: Optional[str] = None
     ):
-        desc = item["description"]
-        self.logger.info(f"Data: {desc[:10]}")
+        data = extract_data(item)

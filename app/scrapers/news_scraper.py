@@ -3,7 +3,8 @@ import httpx
 import logging
 from app.utils.page_fetcher import fetch_pages
 from app.repo.state_repo import RedisStateRepo
-
+from app.tokenizers.tokenizer import Tokenizer
+from app.config import settings
 
 class NewsScraper:
     def __init__(
@@ -16,11 +17,13 @@ class NewsScraper:
         self.limit = limit
         self.page_limit = page_limit
         self.logger = logging.getLogger("uvicorn.error")
+        self.tokenizer = Tokenizer(settings.TOKENIZER,settings.MAX_TOKENS_LEN)
     
     async def run(self, symbol: Optional[str] = None):
         state = await self._load_state(symbol)
         last_ts, next_url = state
         url = next_url or self._build_url(last_ts, symbol)
+        max_current_ts, next_to_fetch_url = None, None
         
         async with httpx.AsyncClient() as client:
             try:

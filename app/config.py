@@ -32,5 +32,9 @@ class Settings(BaseSettings):
     GENERAL_NEWS_SCRAPE_LIMIT: int = 2
     
     REDIS_URL: str = "redis://localhost:6379/0"
+
+    MAX_TOKENS_LEN: int = 1024
+    
+    TOKENIZER: str = "bert-base-uncased"
     
 settings = Settings()

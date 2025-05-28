@@ -32,6 +32,7 @@ async def fetch_pages(
         resp = await client.get(url)
         resp.raise_for_status()
         data = resp.json()
+        
         results = data.get("results", [])
         if not results:
             break

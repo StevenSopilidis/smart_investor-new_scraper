@@ -6,192 +6,35 @@ from fastapi import FastAPI
 from app.repo.state_repo import RedisStateRepo
 from app.models.general_news_state import GeneralNewsState
 from app.models.symbol_news_state import SymbolNewsState
+from app.utils.page_fetcher import fetch_pages
+from app.scrapers.general_news_scraper import GeneralNewsScraper
+from app.scrapers.symbol_news_scraper import SymbolNewsScraper
 import httpx
 import logging
 
-logger = logging.getLogger("uvicorn.error")
 repo = RedisStateRepo()
+general_scraper = GeneralNewsScraper(
+    repo, 
+    settings.GENERAL_NEWS_SCRAPE_LIMIT, 
+    settings.GENERAL_NEWS_MAX_PAGES_TO_VISIT
+)
+symbol_scraper = SymbolNewsScraper(
+    repo,
+    settings.PER_TICKER_NEWS_SCRAPE_LIMIT,
+    settings.PER_TICKER_MAX_PAGES_TO_VISIT
+)
+logger = logging.getLogger("uvicorn.error")
+
 
 async def scrape_general_api():
-    connected = await repo.is_connected()
-    if not connected:
-        logger.error("Could not connect to redis repo")
-        return
-    
-    state = await repo.load_general_news_state()
-    last_ts = state.last_general_news_ts
-    next_url = state.next_general_news_url
-    
-    max_ts = last_ts
-    
-    if next_url:
-        url = next_url
-    else:
-        url = (
-                "https://api.polygon.io/v2/reference/news"
-                f"?order=asc"
-                f"&limit={settings.GENERAL_NEWS_SCRAPE_LIMIT}"
-                f"&sort=published_utc"
-                f"&published_utc.gte={last_ts}"
-                f"&apiKey={settings.API_KEY}"
-        )
-    
-    pages_visited = 0
-    
-    async with httpx.AsyncClient() as client:
-        while url and pages_visited < settings.GENERAL_NEWS_MAX_PAGES_TO_VISIT:
-            try:
-                pages_visited += 1
-                
-                # get data
-                resp = await client.get(url)
-                resp.raise_for_status()
-                data = resp.json()
-                results = data.get("results", [])
-                if not results:
-                    break
-
-                for item in results:
-                    pub = item["published_utc"]
-                    
-                    if not max_ts or pub > max_ts:
-                        max_ts = pub
-                        
-                    # TODO process data
-
-                # prepare next page
-                raw_next = data.get("next_url")
-                if raw_next:
-                    # re-attach apiKey if missing
-                    joiner = "&" if "?" in raw_next else "?"
-                    url = (
-                        raw_next
-                        if "apiKey=" in raw_next
-                        else f"{raw_next}{joiner}apiKey={settings.API_KEY}"
-                    )
-                else:
-                    url = None
-                    next_url = None
-                    break
-
-                last_ts = max_ts
-                
-                if pages_visited >= settings.GENERAL_NEWS_MAX_PAGES_TO_VISIT:
-                    next_url = url
-            
-            except httpx.RequestError as re:
-                logger.error("Network error on page %d: %s", pages_visited, re)
-                break
-            except httpx.HTTPStatusError as he:
-                logger.error(
-                    "Bad response [%d] on page %d: %s",
-                    he.response.status_code,
-                    pages_visited,
-                    he,
-                )
-                break
-            except Exception as e:
-                logger.exception("Unexpected error on page %d", pages_visited)
-                break
-        
-        # update general news statep
-        new_state = GeneralNewsState(
-            last_general_news_ts=last_ts,
-            next_general_news_url=next_url
-        )
-        await repo.set_general_news_state(new_state)
+    await general_scraper.run()
+    pass
     
 
 async def scrape_per_ticker_api(symbol: str):
-    connected = await repo.is_connected()
-    if not connected:
-        logger.error("Could not connect to redis repo")
-        return
+    await symbol_scraper.run(symbol)
+    pass
     
-    state = await repo.load_symbol_news_state(symbol)
-    last_ts = state.last_symbol_news_ts
-    next_url = state.next_symbol_news_url
-    
-    max_ts = last_ts
-    
-    if next_url:
-        url = next_url
-    else:
-        url = (
-                "https://api.polygon.io/v2/reference/news"
-                f"?order=asc"
-                f"&limit={settings.GENERAL_NEWS_SCRAPE_LIMIT}"
-                f"&ticker={symbol}"
-                f"&sort=published_utc"
-                f"&published_utc.gte={last_ts}"
-                f"&apiKey={settings.API_KEY}"
-        )
-    
-    pages_visited = 0
-    
-    async with httpx.AsyncClient() as client:
-        while url and pages_visited < settings.PER_TICKER_NEWS_SCRAPE_LIMIT:
-            try:
-                pages_visited += 1
-                
-                # get data
-                resp = await client.get(url)
-                resp.raise_for_status()
-                data = resp.json()
-                results = data.get("results", [])
-                if not results:
-                    break
-
-                for item in results:
-                    pub = item["published_utc"]
-                    
-                    if not max_ts or pub > max_ts:
-                        max_ts = pub
-                        
-                    # TODO process data
-
-                # prepare next page
-                raw_next = data.get("next_url")
-                if raw_next:
-                    # re-attach apiKey if missing
-                    joiner = "&" if "?" in raw_next else "?"
-                    url = (
-                        raw_next
-                        if "apiKey=" in raw_next
-                        else f"{raw_next}{joiner}apiKey={settings.API_KEY}"
-                    )
-                else:
-                    url = None
-                    next_url = None
-                    break
-
-                last_ts = max_ts
-                
-                if pages_visited >= settings.PER_TICKER_NEWS_SCRAPE_LIMIT:
-                    next_url = url
-                
-            except httpx.RequestError as re:
-                logger.error("Network error on page %d: %s for symbol: %s", pages_visited, re, symbol)
-                break
-            except httpx.HTTPStatusError as he:
-                logger.error(
-                    "Bad response [%d] on page %d: %s for symbol: %s",
-                    he.response.status_code,
-                    pages_visited,
-                    he,
-                    symbol
-                )
-                break
-            except Exception as e:
-                logger.exception("Unexpected error on page %d for symbol: %s", pages_visited, symbol)
-                break
-        
-        new_state = SymbolNewsState(
-            symbol=symbol,
-            last_symbol_news_ts=last_ts,
-            next_symbol_news_url=next_url
-        )
-        await repo.set_symbol_news_state(new_state)
 
 scheduler = AsyncIOScheduler()
 

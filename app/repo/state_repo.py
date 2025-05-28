@@ -18,8 +18,6 @@ class RedisStateRepo:
     async def is_connected(self) -> bool:
         try:
             pong = await self._redis.ping()
-            if pong is True:
-                self._logger.info("connected to redis successfully")
             return pong is True
         except Exception as e:
             self._logger.error(f"could not connect to redis {e}")
@@ -36,16 +34,16 @@ class RedisStateRepo:
             
         return SymbolNewsState(
             symbol=symbol,
-            last_symbol_news_ts=last_ts,
-            next_symbol_news_url=next_url
+            last_ts=last_ts,
+            next_url=next_url
         )
         
     async def set_symbol_news_state(self, state: SymbolNewsState) -> None:
         pipe = self._redis.pipeline()
         
-        pipe.set(f"{state.symbol}:last_ts", state.last_symbol_news_ts)
-        if state.next_symbol_news_url:
-            pipe.set(f"{state.symbol}:next_url", state.next_symbol_news_url)
+        pipe.set(f"{state.symbol}:last_ts", state.last_ts)
+        if state.next_url:
+            pipe.set(f"{state.symbol}:next_url", state.next_url)
         else:
             pipe.delete(f"{state.symbol}:next_url")
         await pipe.execute()
@@ -61,16 +59,16 @@ class RedisStateRepo:
             last_ts = "1970-01-01T00:00:00Z"
             
         return GeneralNewsState(
-            last_general_news_ts=last_ts,
-            next_general_news_url=next_url
+            last_ts=last_ts,
+            next_url=next_url
         )
     
     async def set_general_news_state(self, state: GeneralNewsState) -> None:
         pipe = self._redis.pipeline()
         
-        pipe.set("general_news:last_ts", state.last_general_news_ts)
-        if state.next_general_news_url:
-            pipe.set("general_news:next_url", state.next_general_news_url)
+        pipe.set("general_news:last_ts", state.last_ts)
+        if state.next_url:
+            pipe.set("general_news:next_url", state.next_url)
         else:
             pipe.delete("general_news:next_url")
         await pipe.execute()            

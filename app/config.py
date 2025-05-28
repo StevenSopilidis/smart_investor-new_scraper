@@ -21,14 +21,15 @@ class Settings(BaseSettings):
         default=timedelta(seconds=10),
         description="Interval between scraping news per symbol"
     )
-    PER_TICKER_NEWS_SCRAPE_LIMIT: int = 10
+    PER_TICKER_NEWS_SCRAPE_LIMIT: int = 2
+    PER_TICKER_MAX_PAGES_TO_VISIT: int = 2
     
     GENERAL_NEWS_SCRAPE_INTERVAL: timedelta = Field(
-        default=timedelta(minutes=10),
+        default=timedelta(seconds=10),
         description="Interval between scraping general news"   
     )
     GENERAL_NEWS_MAX_PAGES_TO_VISIT : int = 2
-    GENERAL_NEWS_SCRAPE_LIMIT: int = 10
+    GENERAL_NEWS_SCRAPE_LIMIT: int = 2
     
     REDIS_URL: str = "redis://localhost:6379/0"
     

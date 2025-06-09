@@ -37,4 +37,6 @@ class Settings(BaseSettings):
     
     TOKENIZER: str = "bert-base-uncased"
     
+    SYMBOL_MANAGER_SERVICE_ADDR: str = ""
+    
 settings = Settings()

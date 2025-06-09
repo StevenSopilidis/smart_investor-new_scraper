@@ -9,8 +9,11 @@ from app.models.symbol_news_state import SymbolNewsState
 from app.utils.page_fetcher import fetch_pages
 from app.scrapers.general_news_scraper import GeneralNewsScraper
 from app.scrapers.symbol_news_scraper import SymbolNewsScraper
+from app.grpc_client.symbol_manager_client import SymbolManagerClient
 import httpx
 import logging
+import grpc
+import os
 
 repo = RedisStateRepo()
 general_scraper = GeneralNewsScraper(
@@ -24,7 +27,7 @@ symbol_scraper = SymbolNewsScraper(
     settings.PER_TICKER_MAX_PAGES_TO_VISIT
 )
 logger = logging.getLogger("uvicorn.error")
-
+symbol_manager_client = SymbolManagerClient()
 
 async def scrape_general_api():
     await general_scraper.run()
@@ -60,8 +63,14 @@ def run_scrape_jobs():
         coalesce=True,
     )
     # TODO get all active symbols from symbol manager service
+    symbols = []
     
-    symbols = {"NVDA"}
+    try:
+        symbols = symbol_manager_client.get_active_symbols()
+    except grpc.RpcError as e:
+        logger.error(f"could not get active symbols: {e.details()}")
+        os._exit(-1)
+    
     for symbol in symbols:
         scheduler.add_job(
             scrape_per_ticker_api,
